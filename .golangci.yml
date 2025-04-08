@@ -1,0 +1,48 @@
+version: "2"
+linters:
+  enable:
+    - dogsled
+    - dupl
+    - errorlint
+    - gocritic
+    - gocyclo
+    - gosec
+    - makezero
+    - misspell
+    - nakedret
+    - predeclared
+    - revive
+    - staticcheck
+    - tagliatelle
+    - thelper
+    - tparallel
+    - unconvert
+    - unparam
+    - wastedassign
+    - whitespace
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - dupl
+          - unparam
+        path: _test\.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+    - gofumpt
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
