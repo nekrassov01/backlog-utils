@@ -80,12 +80,12 @@ func (c *Client) List(projectKey, pattern string) ([]*Page, error) {
 	}
 
 	if pattern != "" {
+		r, err := regexp.Compile(pattern)
+		if err != nil {
+			return nil, err
+		}
 		matched := make([]*Page, 0, len(pages))
 		for _, page := range pages {
-			r, err := regexp.Compile(pattern)
-			if err != nil {
-				return nil, err
-			}
 			if r.MatchString(page.Name) {
 				matched = append(matched, page)
 			}
