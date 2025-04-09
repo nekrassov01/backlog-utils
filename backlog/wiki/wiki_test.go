@@ -35,7 +35,7 @@ func TestNew(t *testing.T) {
 					BaseURL:          "https://example.com",
 					APIKey:           "dummy",
 					MaxRetryAttempts: 5,
-					MaxJitterMilli:   1000,
+					MaxJitterMilli:   3000,
 				},
 			},
 			wantErr: false,

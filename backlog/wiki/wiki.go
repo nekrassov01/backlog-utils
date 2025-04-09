@@ -40,7 +40,7 @@ func New(w io.Writer, url, apiKey string) (*Wiki, error) {
 			BaseURL:          url,
 			APIKey:           apiKey,
 			MaxRetryAttempts: 5,
-			MaxJitterMilli:   1000,
+			MaxJitterMilli:   3000,
 		},
 	}
 	return o, nil
