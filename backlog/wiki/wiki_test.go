@@ -20,7 +20,7 @@ func TestNew(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    *Wiki
+		want    *Client
 		wantErr bool
 	}{
 		{
@@ -29,7 +29,7 @@ func TestNew(t *testing.T) {
 				url:    "https://example.com",
 				apiKey: "dummy",
 			},
-			want: &Wiki{
+			want: &Client{
 				Backlog: &backlog.Backlog{
 					Writer:           &bytes.Buffer{},
 					BaseURL:          "https://example.com",
@@ -286,7 +286,7 @@ func TestWiki_List(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			o := &Wiki{
+			o := &Client{
 				Backlog: tt.fields.Backlog,
 			}
 			httpmock.Activate()
@@ -451,7 +451,7 @@ func TestWiki_Get(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			o := &Wiki{
+			o := &Client{
 				Backlog: tt.fields.Backlog,
 			}
 			httpmock.Activate()
@@ -633,7 +633,7 @@ func TestWiki_Rename(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			o := &Wiki{
+			o := &Client{
 				Backlog: tt.fields.Backlog,
 			}
 			httpmock.Activate()
@@ -798,7 +798,7 @@ func TestWiki_Replace(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			o := &Wiki{
+			o := &Client{
 				Backlog: tt.fields.Backlog,
 			}
 			httpmock.Activate()

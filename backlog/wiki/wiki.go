@@ -13,8 +13,8 @@ import (
 	"github.com/nekrassov01/backlog-utils/backlog"
 )
 
-// Wiki represents a Backlog wiki client
-type Wiki struct {
+// Client represents a Backlog wiki client
+type Client struct {
 	*backlog.Backlog
 }
 
@@ -27,14 +27,14 @@ type Page struct {
 }
 
 // New creates a new Backlog wiki client
-func New(w io.Writer, url, apiKey string) (*Wiki, error) {
+func New(w io.Writer, url, apiKey string) (*Client, error) {
 	if url == "" {
 		return nil, errors.New("empty URL")
 	}
 	if apiKey == "" {
 		return nil, errors.New("empty api key")
 	}
-	o := &Wiki{
+	c := &Client{
 		Backlog: &backlog.Backlog{
 			Writer:           w,
 			BaseURL:          url,
@@ -43,22 +43,22 @@ func New(w io.Writer, url, apiKey string) (*Wiki, error) {
 			MaxJitterMilli:   3000,
 		},
 	}
-	return o, nil
+	return c, nil
 }
 
 // List returns a list of wiki pages for the specified project key
-func (o *Wiki) List(projectKey, pattern string) ([]*Page, error) {
+func (c *Client) List(projectKey, pattern string) ([]*Page, error) {
 	if projectKey == "" {
 		return nil, errors.New("empty project key")
 	}
 
-	uri := fmt.Sprintf("%s/api/v2/wikis?projectIdOrKey=%s&apiKey=%s", o.BaseURL, projectKey, o.APIKey)
+	uri := fmt.Sprintf("%s/api/v2/wikis?projectIdOrKey=%s&apiKey=%s", c.BaseURL, projectKey, c.APIKey)
 	req, err := http.NewRequest(http.MethodGet, uri, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := o.Do(req)
+	resp, err := c.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -97,18 +97,18 @@ func (o *Wiki) List(projectKey, pattern string) ([]*Page, error) {
 }
 
 // Get returns a wiki page
-func (o *Wiki) Get(id int64) (*Page, error) {
+func (c *Client) Get(id int64) (*Page, error) {
 	if id <= 0 {
 		return nil, fmt.Errorf("invalid wikiId: %d", id)
 	}
 
-	uri := fmt.Sprintf("%s/api/v2/wikis/%d?apiKey=%s", o.BaseURL, id, o.APIKey)
+	uri := fmt.Sprintf("%s/api/v2/wikis/%d?apiKey=%s", c.BaseURL, id, c.APIKey)
 	req, err := http.NewRequest(http.MethodGet, uri, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := o.Do(req)
+	resp, err := c.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +133,7 @@ func (o *Wiki) Get(id int64) (*Page, error) {
 }
 
 // Rename renames a wiki page
-func (o *Wiki) Rename(page *Page, before, after string) error {
+func (c *Client) Rename(page *Page, before, after string) error {
 	if page == nil {
 		return errors.New("empty wiki page")
 	}
@@ -148,14 +148,14 @@ func (o *Wiki) Rename(page *Page, before, after string) error {
 		"name": {newName},
 	}
 
-	uri := fmt.Sprintf("%s/api/v2/wikis/%d?apiKey=%s", o.BaseURL, page.ID, o.APIKey)
+	uri := fmt.Sprintf("%s/api/v2/wikis/%d?apiKey=%s", c.BaseURL, page.ID, c.APIKey)
 	req, err := http.NewRequest(http.MethodPatch, uri, strings.NewReader(values.Encode()))
 	if err != nil {
 		return err
 	}
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-	resp, err := o.Do(req)
+	resp, err := c.Do(req)
 	if err != nil {
 		return err
 	}
@@ -166,12 +166,12 @@ func (o *Wiki) Rename(page *Page, before, after string) error {
 		return fmt.Errorf("failed to update wiki page: %d: %s", resp.StatusCode, msg)
 	}
 
-	fmt.Fprintf(o.Writer, "updated: %s => %s\n", oldName, newName)
+	fmt.Fprintf(c.Writer, "updated: %s => %s\n", oldName, newName)
 	return nil
 }
 
 // Replace replaces strings in the wiki page content
-func (o *Wiki) Replace(page *Page, pairs ...string) error {
+func (c *Client) Replace(page *Page, pairs ...string) error {
 	if page == nil {
 		return errors.New("empty wiki page")
 	}
@@ -186,14 +186,14 @@ func (o *Wiki) Replace(page *Page, pairs ...string) error {
 		"content": {newContent},
 	}
 
-	uri := fmt.Sprintf("%s/api/v2/wikis/%d?apiKey=%s", o.BaseURL, page.ID, o.APIKey)
+	uri := fmt.Sprintf("%s/api/v2/wikis/%d?apiKey=%s", c.BaseURL, page.ID, c.APIKey)
 	req, err := http.NewRequest(http.MethodPatch, uri, strings.NewReader(values.Encode()))
 	if err != nil {
 		return err
 	}
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-	resp, err := o.Do(req)
+	resp, err := c.Do(req)
 	if err != nil {
 		return err
 	}
@@ -204,6 +204,6 @@ func (o *Wiki) Replace(page *Page, pairs ...string) error {
 		return fmt.Errorf("failed to update wiki page content: %d: %s", resp.StatusCode, msg)
 	}
 
-	fmt.Fprintf(o.Writer, "updated: %d: %s\n", page.ID, page.Name)
+	fmt.Fprintf(c.Writer, "updated: %d: %s\n", page.ID, page.Name)
 	return nil
 }
