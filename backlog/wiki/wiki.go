@@ -161,7 +161,7 @@ func (o *Wiki) Rename(page *Page, before, after string) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+	if resp.StatusCode != http.StatusOK {
 		msg := backlog.GetErrorMessage(resp)
 		return fmt.Errorf("failed to update wiki page: %d: %s", resp.StatusCode, msg)
 	}
