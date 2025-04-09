@@ -152,12 +152,12 @@ func (a *app) listWiki(_ context.Context, cmd *cli.Command) error {
 	projectKey := cmd.String(a.projectKey.Name)
 	pattern := cmd.String(a.pattern.Name)
 
-	wiki, err := wiki.New(a.Writer, url, apiKey)
+	client, err := wiki.New(a.Writer, url, apiKey)
 	if err != nil {
 		return err
 	}
 
-	pages, err := wiki.List(projectKey, pattern)
+	pages, err := client.List(projectKey, pattern)
 	if err != nil {
 		return err
 	}
@@ -182,17 +182,17 @@ func (a *app) renameWiki(_ context.Context, cmd *cli.Command) error {
 	before := cmd.String(a.old.Name)
 	after := cmd.String(a.new.Name)
 
-	wiki, err := wiki.New(a.Writer, url, apiKey)
+	client, err := wiki.New(a.Writer, url, apiKey)
 	if err != nil {
 		return err
 	}
 
-	page, err := wiki.Get(wikiID)
+	page, err := client.Get(wikiID)
 	if err != nil {
 		return err
 	}
 
-	if err := wiki.Rename(page, before, after); err != nil {
+	if err := client.Rename(page, before, after); err != nil {
 		return err
 	}
 
@@ -210,18 +210,18 @@ func (a *app) renameWikiAll(_ context.Context, cmd *cli.Command) error {
 	before := cmd.String(a.old.Name)
 	after := cmd.String(a.new.Name)
 
-	wiki, err := wiki.New(a.Writer, url, apiKey)
+	client, err := wiki.New(a.Writer, url, apiKey)
 	if err != nil {
 		return err
 	}
 
-	pages, err := wiki.List(projectKey, pattern)
+	pages, err := client.List(projectKey, pattern)
 	if err != nil {
 		return err
 	}
 
 	for _, page := range pages {
-		if err := wiki.Rename(page, before, after); err != nil {
+		if err := client.Rename(page, before, after); err != nil {
 			return err
 		}
 	}
@@ -238,17 +238,17 @@ func (a *app) replaceWiki(_ context.Context, cmd *cli.Command) error {
 	wikiID := cmd.Int(a.wikiID.Name)
 	pairs := cmd.StringSlice(a.pairs.Name)
 
-	wiki, err := wiki.New(a.Writer, url, apiKey)
+	client, err := wiki.New(a.Writer, url, apiKey)
 	if err != nil {
 		return err
 	}
 
-	page, err := wiki.Get(wikiID)
+	page, err := client.Get(wikiID) // Get page content
 	if err != nil {
 		return err
 	}
 
-	if err := wiki.Replace(page, pairs...); err != nil {
+	if err := client.Replace(page, pairs...); err != nil {
 		return err
 	}
 
@@ -265,22 +265,22 @@ func (a *app) replaceWikiAll(_ context.Context, cmd *cli.Command) error {
 	pattern := cmd.String(a.pattern.Name)
 	pairs := cmd.StringSlice(a.pairs.Name)
 
-	wiki, err := wiki.New(a.Writer, url, apiKey)
+	client, err := wiki.New(a.Writer, url, apiKey)
 	if err != nil {
 		return err
 	}
 
-	pages, err := wiki.List(projectKey, pattern)
+	pages, err := client.List(projectKey, pattern)
 	if err != nil {
 		return err
 	}
 
 	for _, page := range pages {
-		detail, err := wiki.Get(page.ID) // Get page content
+		detail, err := client.Get(page.ID) // Get page content
 		if err != nil {
 			return err
 		}
-		if err := wiki.Replace(detail, pairs...); err != nil {
+		if err := client.Replace(detail, pairs...); err != nil {
 			return err
 		}
 	}
