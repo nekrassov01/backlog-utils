@@ -106,7 +106,7 @@ func TestWiki_List(t *testing.T) {
 				},
 			},
 			args: args{
-				projectKey: "dummyProjectKey",
+				projectKey: "dummy",
 				pattern:    "",
 			},
 			mock: mock{
@@ -135,7 +135,7 @@ func TestWiki_List(t *testing.T) {
 				},
 			},
 			args: args{
-				projectKey: "dummyProjectKey",
+				projectKey: "dummy",
 				pattern:    "Test",
 			},
 			mock: mock{
@@ -163,7 +163,7 @@ func TestWiki_List(t *testing.T) {
 				},
 			},
 			args: args{
-				projectKey: "dummyProjectKey",
+				projectKey: "dummy",
 				pattern:    "[",
 			},
 			mock: mock{
@@ -185,7 +185,7 @@ func TestWiki_List(t *testing.T) {
 				},
 			},
 			args: args{
-				projectKey: "dummyProjectKey",
+				projectKey: "dummy",
 				pattern:    "",
 			},
 			mock: mock{
@@ -207,7 +207,7 @@ func TestWiki_List(t *testing.T) {
 				},
 			},
 			args: args{
-				projectKey: "dummyProjectKey",
+				projectKey: "dummy",
 				pattern:    "",
 			},
 			mock: mock{
@@ -251,7 +251,7 @@ func TestWiki_List(t *testing.T) {
 				},
 			},
 			args: args{
-				projectKey: "dummyProjectKey",
+				projectKey: "dummy",
 				pattern:    "",
 			},
 			mock: mock{
@@ -273,7 +273,7 @@ func TestWiki_List(t *testing.T) {
 				},
 			},
 			args: args{
-				projectKey: "dummyProjectKey",
+				projectKey: "dummy",
 				pattern:    "",
 			},
 			mock: mock{
@@ -286,17 +286,17 @@ func TestWiki_List(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			o := &Wiki{
+				Backlog: tt.fields.Backlog,
+			}
 			httpmock.Activate()
 			defer httpmock.DeactivateAndReset()
 			if tt.mock.status != 0 {
 				httpmock.RegisterResponder(
 					http.MethodGet,
-					fmt.Sprintf("%s/api/v2/wikis?projectIdOrKey=%s&apiKey=%s", tt.fields.Backlog.BaseURL, tt.args.projectKey, tt.fields.Backlog.APIKey),
+					fmt.Sprintf("%s/api/v2/wikis?projectIdOrKey=%s&apiKey=%s", o.BaseURL, tt.args.projectKey, o.APIKey),
 					httpmock.NewStringResponder(tt.mock.status, tt.mock.body),
 				)
-			}
-			o := &Wiki{
-				Backlog: tt.fields.Backlog,
 			}
 			got, err := o.List(tt.args.projectKey, tt.args.pattern)
 			if (err != nil) != tt.wantErr {
@@ -451,17 +451,17 @@ func TestWiki_Get(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			o := &Wiki{
+				Backlog: tt.fields.Backlog,
+			}
 			httpmock.Activate()
 			defer httpmock.DeactivateAndReset()
 			if tt.mock.status != 0 {
 				httpmock.RegisterResponder(
 					http.MethodGet,
-					fmt.Sprintf("%s/api/v2/wikis/%d?apiKey=%s", tt.fields.Backlog.BaseURL, tt.args.id, tt.fields.Backlog.APIKey),
+					fmt.Sprintf("%s/api/v2/wikis/%d?apiKey=%s", o.BaseURL, tt.args.id, o.APIKey),
 					httpmock.NewStringResponder(tt.mock.status, tt.mock.body),
 				)
-			}
-			o := &Wiki{
-				Backlog: tt.fields.Backlog,
 			}
 			got, err := o.Get(tt.args.id)
 			if (err != nil) != tt.wantErr {
@@ -539,6 +539,52 @@ func TestWiki_Rename(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "empty old string",
+			fields: fields{
+				Backlog: &backlog.Backlog{
+					Writer:  io.Discard,
+					BaseURL: "https://example.com",
+					APIKey:  "dummy",
+				},
+			},
+			args: args{
+				page: &Page{
+					ID:   1,
+					Name: "Old Name",
+				},
+				old: "",
+				new: "new",
+			},
+			mock: mock{
+				status: 0,
+				body:   "",
+			},
+			wantErr: true,
+		},
+		{
+			name: "empty new string",
+			fields: fields{
+				Backlog: &backlog.Backlog{
+					Writer:  io.Discard,
+					BaseURL: "https://example.com",
+					APIKey:  "dummy",
+				},
+			},
+			args: args{
+				page: &Page{
+					ID:   1,
+					Name: "Old Name",
+				},
+				old: "old",
+				new: "",
+			},
+			mock: mock{
+				status: 0,
+				body:   "",
+			},
+			wantErr: true,
+		},
+		{
 			name: "empty old and new strings",
 			fields: fields{
 				Backlog: &backlog.Backlog{
@@ -587,17 +633,17 @@ func TestWiki_Rename(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			o := &Wiki{
+				Backlog: tt.fields.Backlog,
+			}
 			httpmock.Activate()
 			defer httpmock.DeactivateAndReset()
 			if tt.mock.status != 0 {
 				httpmock.RegisterResponder(
 					http.MethodPatch,
-					fmt.Sprintf("%s/api/v2/wikis/%d?apiKey=%s", tt.fields.Backlog.BaseURL, tt.args.page.ID, tt.fields.Backlog.APIKey),
+					fmt.Sprintf("%s/api/v2/wikis/%d?apiKey=%s", o.BaseURL, tt.args.page.ID, o.APIKey),
 					httpmock.NewStringResponder(tt.mock.status, tt.mock.body),
 				)
-			}
-			o := &Wiki{
-				Backlog: tt.fields.Backlog,
 			}
 			err := o.Rename(tt.args.page, tt.args.old, tt.args.new)
 			if (err != nil) != tt.wantErr {
@@ -666,6 +712,48 @@ func TestWiki_Replace(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "many pairs",
+			fields: fields{
+				Backlog: &backlog.Backlog{
+					Writer: io.Discard,
+					APIKey: "dummy",
+				},
+			},
+			args: args{
+				page: &Page{
+					ID:      1,
+					Content: "Hello Old World",
+				},
+				pairs: []string{"Old", "New", "World", "Earth"},
+			},
+			mock: mock{
+				status: 0,
+				body:   "",
+			},
+			wantErr: true,
+		},
+		{
+			name: "empty pairs",
+			fields: fields{
+				Backlog: &backlog.Backlog{
+					Writer: io.Discard,
+					APIKey: "dummy",
+				},
+			},
+			args: args{
+				page: &Page{
+					ID:      1,
+					Content: "Hello Old World",
+				},
+				pairs: nil,
+			},
+			mock: mock{
+				status: 0,
+				body:   "",
+			},
+			wantErr: true,
+		},
+		{
 			name: "invalid pairs",
 			fields: fields{
 				Backlog: &backlog.Backlog{
@@ -710,17 +798,17 @@ func TestWiki_Replace(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			o := &Wiki{
+				Backlog: tt.fields.Backlog,
+			}
 			httpmock.Activate()
 			defer httpmock.DeactivateAndReset()
 			if tt.mock.status != 0 {
 				httpmock.RegisterResponder(
 					http.MethodPatch,
-					fmt.Sprintf("%s/api/v2/wikis/%d?apiKey=%s", tt.fields.Backlog.BaseURL, tt.args.page.ID, tt.fields.Backlog.APIKey),
+					fmt.Sprintf("%s/api/v2/wikis/%d?apiKey=%s", o.BaseURL, tt.args.page.ID, o.APIKey),
 					httpmock.NewStringResponder(tt.mock.status, tt.mock.body),
 				)
-			}
-			o := &Wiki{
-				Backlog: tt.fields.Backlog,
 			}
 			err := o.Replace(tt.args.page, tt.args.pairs...)
 			if (err != nil) != tt.wantErr {

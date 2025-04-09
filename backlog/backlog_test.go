@@ -20,8 +20,10 @@ func TestBacklog_Do(t *testing.T) {
 		req *http.Request
 	}
 	type mock struct {
-		status int
-		body   string
+		status       int
+		body         string
+		retryHeaders map[string]string
+		retryCount   int
 	}
 	tests := []struct {
 		name    string
@@ -71,6 +73,10 @@ func TestBacklog_Do(t *testing.T) {
 			mock: mock{
 				status: http.StatusOK,
 				body:   http.StatusText(http.StatusOK),
+				retryHeaders: map[string]string{
+					"X-RateLimit-Reset": strconv.FormatInt(time.Now().Add(1*time.Second).Unix(), 10),
+				},
+				retryCount: 1,
 			},
 			want: &http.Response{
 				StatusCode: http.StatusOK,
@@ -117,6 +123,10 @@ func TestBacklog_Do(t *testing.T) {
 			mock: mock{
 				status: http.StatusTooManyRequests,
 				body:   http.StatusText(http.StatusTooManyRequests),
+				retryHeaders: map[string]string{
+					"X-RateLimit-Reset": strconv.FormatInt(time.Now().Add(1*time.Second).Unix(), 10),
+				},
+				retryCount: 3, // Exceeding the max retry attempts
 			},
 			want:    nil,
 			wantErr: true,
@@ -124,38 +134,25 @@ func TestBacklog_Do(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			o := tt.fields.Backlog
 			httpmock.Activate()
 			defer httpmock.DeactivateAndReset()
-			switch tt.name {
-			case "retry":
-				n := 0
-				httpmock.RegisterResponder(
-					http.MethodGet,
-					fmt.Sprintf("%s/test", tt.fields.Backlog.BaseURL),
-					func(req *http.Request) (*http.Response, error) {
-						if n == 0 {
-							n++
-							resp := httpmock.NewStringResponse(http.StatusTooManyRequests, http.StatusText(http.StatusTooManyRequests))
-							resp.Header.Set("X-RateLimit-Reset", strconv.FormatInt(time.Now().Add(1*time.Second).Unix(), 10))
-							return resp, nil
+			n := 0
+			httpmock.RegisterResponder(
+				http.MethodGet,
+				fmt.Sprintf("%s/test", o.BaseURL),
+				func(req *http.Request) (*http.Response, error) {
+					if n < tt.mock.retryCount {
+						n++
+						resp := httpmock.NewStringResponse(http.StatusTooManyRequests, tt.mock.body)
+						for k, v := range tt.mock.retryHeaders {
+							resp.Header.Set(k, v)
 						}
-						return httpmock.NewStringResponder(tt.mock.status, tt.mock.body)(req)
-					},
-				)
-			default:
-				httpmock.RegisterResponder(
-					http.MethodGet,
-					fmt.Sprintf("%s/test", tt.fields.Backlog.BaseURL),
-					httpmock.NewStringResponder(tt.mock.status, tt.mock.body),
-				)
-			}
-			o := &Backlog{
-				Writer:           tt.fields.Backlog.Writer,
-				BaseURL:          tt.fields.Backlog.BaseURL,
-				APIKey:           tt.fields.Backlog.APIKey,
-				MaxRetryAttempts: tt.fields.Backlog.MaxRetryAttempts,
-				MaxJitterMilli:   tt.fields.Backlog.MaxJitterMilli,
-			}
+						return resp, nil
+					}
+					return httpmock.NewStringResponder(tt.mock.status, tt.mock.body)(req)
+				},
+			)
 			got, err := o.Do(tt.args.req)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Backlog.Do() error = %v, wantErr %v", err, tt.wantErr)
@@ -165,10 +162,10 @@ func TestBacklog_Do(t *testing.T) {
 				if got != nil {
 					t.Errorf("Backlog.Do() got = %v, want nil", got)
 				}
-			} else {
-				if got.StatusCode != tt.want.StatusCode {
-					t.Errorf("Backlog.Do() status = %v, want %v", got.StatusCode, tt.want.StatusCode)
-				}
+				return
+			}
+			if got.StatusCode != tt.want.StatusCode {
+				t.Errorf("Backlog.Do() status = %v, want %v", got.StatusCode, tt.want.StatusCode)
 			}
 		})
 	}
