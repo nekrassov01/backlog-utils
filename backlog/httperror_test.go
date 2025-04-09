@@ -45,7 +45,7 @@ func TestGetErrorMessage(t *testing.T) {
 					Body:       io.NopCloser(bytes.NewBufferString("")),
 				},
 			},
-			want: "",
+			want: http.StatusText(http.StatusInternalServerError),
 		},
 		{
 			name: "invalid json",
@@ -55,7 +55,7 @@ func TestGetErrorMessage(t *testing.T) {
 					Body:       io.NopCloser(bytes.NewBufferString("{invalid json")),
 				},
 			},
-			want: "",
+			want: http.StatusText(http.StatusInternalServerError),
 		},
 		{
 			name: "no errors field",
@@ -65,7 +65,7 @@ func TestGetErrorMessage(t *testing.T) {
 					Body:       io.NopCloser(bytes.NewBufferString(`{"message": "error"}`)),
 				},
 			},
-			want: "",
+			want: http.StatusText(http.StatusInternalServerError),
 		},
 		{
 			name: "nil",

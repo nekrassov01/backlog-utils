@@ -25,14 +25,19 @@ func GetErrorMessage(resp *http.Response) string {
 		return ""
 	}
 
+	s := ""
+	if resp.StatusCode != 0 {
+		s = http.StatusText(resp.StatusCode)
+	}
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return ""
+		return s
 	}
 
 	var errResp ErrorResponse
 	if err := json.Unmarshal(body, &errResp); err != nil {
-		return ""
+		return s
 	}
 
 	messages := make([]string, 0, 2)
@@ -41,7 +46,7 @@ func GetErrorMessage(resp *http.Response) string {
 	}
 
 	if len(messages) == 0 {
-		return ""
+		return s
 	}
 
 	return strings.Join(messages, "; ")
