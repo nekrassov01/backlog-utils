@@ -38,10 +38,10 @@ func (o *Backlog) Do(req *http.Request) (*http.Response, error) {
 		s := resp.Header.Get("X-RateLimit-Reset")
 		wait := 1 * time.Second
 		if s != "" {
-			if ms, err := strconv.ParseInt(s, 10, 64); err == nil {
+			if secconds, err := strconv.ParseInt(s, 10, 64); err == nil {
 				now := time.Now().Unix()
-				if ms > now {
-					wait = time.Duration(ms-now) * time.Second
+				if secconds > now {
+					wait = time.Duration(secconds-now) * time.Second
 				}
 			}
 		}
@@ -54,6 +54,7 @@ func (o *Backlog) Do(req *http.Request) (*http.Response, error) {
 		}
 		resp.Body.Close()
 
+		fmt.Fprintf(o.Writer, "429 too many requests: retrying #%d\n", n+1)
 		time.Sleep(wait)
 		n++
 
