@@ -6,16 +6,21 @@ import (
 	"io"
 	"net/http"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetErrorMessage(t *testing.T) {
 	type args struct {
 		resp *http.Response
 	}
+	type expected struct {
+		value string
+	}
 	tests := []struct {
-		name string
-		args args
-		want string
+		name     string
+		args     args
+		expected expected
 	}{
 		{
 			name: "basic",
@@ -25,7 +30,9 @@ func TestGetErrorMessage(t *testing.T) {
 					Body:       io.NopCloser(bytes.NewBufferString(`{"errors": [{"message": "Invalid request", "code": 400}]}`)),
 				},
 			},
-			want: "Invalid request",
+			expected: expected{
+				value: "Invalid request",
+			},
 		},
 		{
 			name: "multiple error messages",
@@ -35,7 +42,9 @@ func TestGetErrorMessage(t *testing.T) {
 					Body:       io.NopCloser(bytes.NewBufferString(`{"errors": [{"message": "Invalid request", "code": 400},{"message": "Missing parameter", "code": 401}]}`)),
 				},
 			},
-			want: "Invalid request; Missing parameter",
+			expected: expected{
+				value: "Invalid request; Missing parameter",
+			},
 		},
 		{
 			name: "empty",
@@ -45,7 +54,9 @@ func TestGetErrorMessage(t *testing.T) {
 					Body:       io.NopCloser(bytes.NewBufferString("")),
 				},
 			},
-			want: http.StatusText(http.StatusInternalServerError),
+			expected: expected{
+				value: http.StatusText(http.StatusInternalServerError),
+			},
 		},
 		{
 			name: "invalid json",
@@ -55,7 +66,9 @@ func TestGetErrorMessage(t *testing.T) {
 					Body:       io.NopCloser(bytes.NewBufferString("{invalid json")),
 				},
 			},
-			want: http.StatusText(http.StatusInternalServerError),
+			expected: expected{
+				value: http.StatusText(http.StatusInternalServerError),
+			},
 		},
 		{
 			name: "no errors field",
@@ -65,21 +78,24 @@ func TestGetErrorMessage(t *testing.T) {
 					Body:       io.NopCloser(bytes.NewBufferString(`{"message": "error"}`)),
 				},
 			},
-			want: http.StatusText(http.StatusInternalServerError),
+			expected: expected{
+				value: http.StatusText(http.StatusInternalServerError),
+			},
 		},
 		{
 			name: "nil",
 			args: args{
 				resp: nil,
 			},
-			want: "",
+			expected: expected{
+				value: "",
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := GetErrorMessage(tt.args.resp); got != tt.want {
-				t.Errorf("GetErrorMessage() = %v, want %v", got, tt.want)
-			}
+			actual := GetErrorMessage(tt.args.resp)
+			assert.Equal(t, tt.expected.value, actual)
 		})
 	}
 }

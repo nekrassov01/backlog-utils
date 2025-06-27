@@ -1,293 +1,318 @@
 package wiki
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"net/http"
-	"reflect"
 	"testing"
 
 	"github.com/jarcoal/httpmock"
 	"github.com/nekrassov01/backlog-utils/backlog"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestNew(t *testing.T) {
+func TestNewClient(t *testing.T) {
 	type args struct {
 		url    string
 		apiKey string
+		opts   []backlog.ClientOption
+	}
+	type expected struct {
+		value   *Client
+		isError bool
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    *Client
-		wantErr bool
+		name     string
+		args     args
+		expected expected
 	}{
 		{
 			name: "basic",
 			args: args{
 				url:    "https://example.com",
 				apiKey: "dummy",
-			},
-			want: &Client{
-				Backlog: &backlog.Backlog{
-					Writer:           &bytes.Buffer{},
-					BaseURL:          "https://example.com",
-					APIKey:           "dummy",
-					MaxRetryAttempts: 5,
-					MaxJitterMilli:   3000,
+				opts: []backlog.ClientOption{
+					backlog.WithWriter(io.Discard),
+					backlog.WithTransport(http.DefaultTransport),
 				},
 			},
-			wantErr: false,
+			expected: expected{
+				value: &Client{
+					&backlog.Client{
+						Writer:  io.Discard,
+						BaseURL: "https://example.com",
+						APIKey:  "dummy",
+						HTTPClient: &http.Client{
+							Transport: http.DefaultTransport,
+						},
+					},
+				},
+				isError: false,
+			},
 		},
 		{
 			name: "empty url",
 			args: args{
 				url:    "",
 				apiKey: "dummy",
+				opts:   nil,
 			},
-			want:    nil,
-			wantErr: true,
+			expected: expected{
+				value:   nil,
+				isError: true,
+			},
 		},
 		{
 			name: "empty api key",
 			args: args{
 				url:    "https://example.com",
 				apiKey: "",
+				opts:   nil,
 			},
-			want:    nil,
-			wantErr: true,
+			expected: expected{
+				value:   nil,
+				isError: true,
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			w := &bytes.Buffer{}
-			got, err := New(w, tt.args.url, tt.args.apiKey)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("New() error = %v, wantErr %v", err, tt.wantErr)
+			actual, err := NewClient(tt.args.url, tt.args.apiKey, tt.args.opts...)
+			if tt.expected.isError {
+				assert.Error(t, err)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("New() = %v, want %v", got, tt.want)
-			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected.value, actual)
 		})
 	}
 }
 
 func TestWiki_List(t *testing.T) {
 	type fields struct {
-		Backlog *backlog.Backlog
+		Backlog *backlog.Client
 	}
 	type args struct {
 		projectKey string
 		pattern    string
+	}
+	type expected struct {
+		value   []*Page
+		isError bool
 	}
 	type mock struct {
 		status int
 		body   string
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		mock    mock
-		want    []*Page
-		wantErr bool
+		name     string
+		fields   fields
+		args     args
+		mock     mock
+		expected expected
 	}{
 		{
 			name: "basic",
 			fields: fields{
-				Backlog: &backlog.Backlog{
-					Writer:           io.Discard,
-					BaseURL:          "https://example.com",
-					APIKey:           "dummy",
-					MaxRetryAttempts: 2,
-					MaxJitterMilli:   10,
+				Backlog: &backlog.Client{
+					Writer:     io.Discard,
+					BaseURL:    "https://example.com",
+					APIKey:     "dummy",
+					HTTPClient: &http.Client{},
 				},
 			},
 			args: args{
 				projectKey: "dummy",
 				pattern:    "",
 			},
+			expected: expected{
+				value: []*Page{
+					{
+						ID:        1,
+						ProjectID: 123,
+						Name:      "Test Page",
+						Content:   "",
+					},
+				},
+				isError: false,
+			},
 			mock: mock{
 				status: 200,
 				body:   `[{"id":1,"projectId":123,"name":"Test Page","content":""}]`,
 			},
-			want: []*Page{
-				{
-					ID:        1,
-					ProjectID: 123,
-					Name:      "Test Page",
-					Content:   "",
-				},
-			},
-			wantErr: false,
 		},
 		{
 			name: "pattern",
 			fields: fields{
-				Backlog: &backlog.Backlog{
-					Writer:           io.Discard,
-					BaseURL:          "https://example.com",
-					APIKey:           "dummy",
-					MaxRetryAttempts: 2,
-					MaxJitterMilli:   10,
+				Backlog: &backlog.Client{
+					Writer:     io.Discard,
+					BaseURL:    "https://example.com",
+					APIKey:     "dummy",
+					HTTPClient: &http.Client{},
 				},
 			},
 			args: args{
 				projectKey: "dummy",
 				pattern:    "Test",
 			},
+			expected: expected{
+				value: []*Page{
+					{
+						ID:        1,
+						ProjectID: 123,
+						Name:      "Test Page",
+					},
+				},
+				isError: false,
+			},
 			mock: mock{
 				status: 200,
 				body:   `[{"id":1,"projectId":123,"name":"Test Page"},{"id":2,"projectId":123,"name":"Other Page"}]`,
 			},
-			want: []*Page{
-				{
-					ID:        1,
-					ProjectID: 123,
-					Name:      "Test Page",
-				},
-			},
-			wantErr: false,
 		},
 		{
 			name: "invalid pattern",
 			fields: fields{
-				Backlog: &backlog.Backlog{
-					Writer:           io.Discard,
-					BaseURL:          "https://example.com",
-					APIKey:           "dummy",
-					MaxRetryAttempts: 2,
-					MaxJitterMilli:   10,
+				Backlog: &backlog.Client{
+					Writer:     io.Discard,
+					BaseURL:    "https://example.com",
+					APIKey:     "dummy",
+					HTTPClient: &http.Client{},
 				},
 			},
 			args: args{
 				projectKey: "dummy",
 				pattern:    "[",
 			},
+			expected: expected{
+				value:   nil,
+				isError: true,
+			},
 			mock: mock{
 				status: 0,
 				body:   "",
 			},
-			want:    nil,
-			wantErr: true,
 		},
 		{
 			name: "empty url",
 			fields: fields{
-				Backlog: &backlog.Backlog{
-					Writer:           io.Discard,
-					BaseURL:          "",
-					APIKey:           "dummy",
-					MaxRetryAttempts: 2,
-					MaxJitterMilli:   10,
+				Backlog: &backlog.Client{
+					Writer:     io.Discard,
+					BaseURL:    "",
+					APIKey:     "dummy",
+					HTTPClient: &http.Client{},
 				},
 			},
 			args: args{
 				projectKey: "dummy",
 				pattern:    "",
 			},
+			expected: expected{
+				value:   nil,
+				isError: true,
+			},
 			mock: mock{
 				status: 0,
 				body:   "",
 			},
-			want:    nil,
-			wantErr: true,
 		},
 		{
 			name: "empty api key",
 			fields: fields{
-				Backlog: &backlog.Backlog{
-					Writer:           io.Discard,
-					BaseURL:          "https://example.com",
-					APIKey:           "",
-					MaxRetryAttempts: 2,
-					MaxJitterMilli:   10,
+				Backlog: &backlog.Client{
+					Writer:     io.Discard,
+					BaseURL:    "https://example.com",
+					APIKey:     "",
+					HTTPClient: &http.Client{},
 				},
 			},
 			args: args{
 				projectKey: "dummy",
 				pattern:    "",
 			},
+			expected: expected{
+				value:   nil,
+				isError: true,
+			},
 			mock: mock{
 				status: 0,
 				body:   "",
 			},
-			want:    nil,
-			wantErr: true,
 		},
 		{
 			name: "empty project key",
 			fields: fields{
-				Backlog: &backlog.Backlog{
-					Writer:           io.Discard,
-					BaseURL:          "https://example.com",
-					APIKey:           "dummy",
-					MaxRetryAttempts: 2,
-					MaxJitterMilli:   10,
+				Backlog: &backlog.Client{
+					Writer:     io.Discard,
+					BaseURL:    "https://example.com",
+					APIKey:     "dummy",
+					HTTPClient: &http.Client{},
 				},
 			},
 			args: args{
 				projectKey: "",
 				pattern:    "",
 			},
+			expected: expected{
+				value:   nil,
+				isError: true,
+			},
 			mock: mock{
 				status: 0,
 				body:   "",
 			},
-			want:    nil,
-			wantErr: true,
 		},
 		{
 			name: "api error",
 			fields: fields{
-				Backlog: &backlog.Backlog{
-					Writer:           io.Discard,
-					BaseURL:          "https://example.com",
-					APIKey:           "dummy",
-					MaxRetryAttempts: 2,
-					MaxJitterMilli:   10,
+				Backlog: &backlog.Client{
+					Writer:     io.Discard,
+					BaseURL:    "https://example.com",
+					APIKey:     "dummy",
+					HTTPClient: &http.Client{},
 				},
 			},
 			args: args{
 				projectKey: "dummy",
 				pattern:    "",
+			},
+			expected: expected{
+				value:   nil,
+				isError: true,
 			},
 			mock: mock{
 				status: 500,
 				body:   `{"errors":[{"message":"Internal Server Error"}]}`,
 			},
-			want:    nil,
-			wantErr: true,
 		},
 		{
 			name: "invalid response",
 			fields: fields{
-				Backlog: &backlog.Backlog{
-					Writer:           io.Discard,
-					BaseURL:          "https://example.com",
-					APIKey:           "dummy",
-					MaxRetryAttempts: 2,
-					MaxJitterMilli:   10,
+				Backlog: &backlog.Client{
+					Writer:     io.Discard,
+					BaseURL:    "https://example.com",
+					APIKey:     "dummy",
+					HTTPClient: &http.Client{},
 				},
 			},
 			args: args{
 				projectKey: "dummy",
 				pattern:    "",
 			},
+			expected: expected{
+				value:   nil,
+				isError: true,
+			},
 			mock: mock{
 				status: 200,
 				body:   `[{"id":1,"projectId":123,"name":}]`,
 			},
-			want:    nil,
-			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			o := &Client{
-				Backlog: tt.fields.Backlog,
+				Client: tt.fields.Backlog,
 			}
 			httpmock.Activate()
 			defer httpmock.DeactivateAndReset()
@@ -298,161 +323,181 @@ func TestWiki_List(t *testing.T) {
 					httpmock.NewStringResponder(tt.mock.status, tt.mock.body),
 				)
 			}
-			got, err := o.List(tt.args.projectKey, tt.args.pattern)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Wiki.List() error = %v, wantErr %v", err, tt.wantErr)
+			actual, err := o.List(tt.args.projectKey, tt.args.pattern)
+			if tt.expected.isError {
+				assert.Error(t, err)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Wiki.List() = %v, want %v", got, tt.want)
-			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected.value, actual)
 		})
 	}
 }
 
 func TestWiki_Get(t *testing.T) {
 	type fields struct {
-		Backlog *backlog.Backlog
+		Backlog *backlog.Client
 	}
 	type args struct {
 		id int64
+	}
+	type expected struct {
+		value   *Page
+		isError bool
 	}
 	type mock struct {
 		status int
 		body   string
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		mock    mock
-		want    *Page
-		wantErr bool
+		name     string
+		fields   fields
+		args     args
+		expected expected
+		mock     mock
 	}{
 		{
 			name: "basic",
 			fields: fields{
-				Backlog: &backlog.Backlog{
-					Writer:  io.Discard,
-					BaseURL: "https://example.com",
-					APIKey:  "dummy",
+				Backlog: &backlog.Client{
+					Writer:     io.Discard,
+					BaseURL:    "https://example.com",
+					APIKey:     "dummy",
+					HTTPClient: &http.Client{},
 				},
 			},
 			args: args{
 				id: 1,
+			},
+			expected: expected{
+				value: &Page{
+					ID:        1,
+					ProjectID: 123,
+					Name:      "Test Page",
+					Content:   "Sample Content",
+				},
+				isError: false,
 			},
 			mock: mock{
 				status: 200,
 				body:   `{"id":1,"projectId":123,"name":"Test Page","content":"Sample Content"}`,
 			},
-			want: &Page{
-				ID:        1,
-				ProjectID: 123,
-				Name:      "Test Page",
-				Content:   "Sample Content",
-			},
-			wantErr: false,
 		},
 		{
 			name: "empty url",
 			fields: fields{
-				Backlog: &backlog.Backlog{
-					Writer:  io.Discard,
-					BaseURL: "",
-					APIKey:  "dummy",
+				Backlog: &backlog.Client{
+					Writer:     io.Discard,
+					BaseURL:    "",
+					APIKey:     "dummy",
+					HTTPClient: &http.Client{},
 				},
 			},
 			args: args{
 				id: 1,
 			},
+			expected: expected{
+				value:   nil,
+				isError: true,
+			},
 			mock: mock{
 				status: 0,
 				body:   "",
 			},
-			want:    nil,
-			wantErr: true,
 		},
 		{
 			name: "empty api key",
 			fields: fields{
-				Backlog: &backlog.Backlog{
-					Writer:  io.Discard,
-					BaseURL: "https://example.com",
-					APIKey:  "",
+				Backlog: &backlog.Client{
+					Writer:     io.Discard,
+					BaseURL:    "https://example.com",
+					APIKey:     "",
+					HTTPClient: &http.Client{},
 				},
 			},
 			args: args{
 				id: 1,
 			},
+			expected: expected{
+				value:   nil,
+				isError: true,
+			},
 			mock: mock{
 				status: 0,
 				body:   "",
 			},
-			want:    nil,
-			wantErr: true,
 		},
 		{
 			name: "invalid id",
 			fields: fields{
-				Backlog: &backlog.Backlog{
-					Writer:  io.Discard,
-					BaseURL: "https://example.com",
-					APIKey:  "dummy",
+				Backlog: &backlog.Client{
+					Writer:     io.Discard,
+					BaseURL:    "https://example.com",
+					APIKey:     "dummy",
+					HTTPClient: &http.Client{},
 				},
 			},
 			args: args{
 				id: -1,
 			},
+			expected: expected{
+				value:   nil,
+				isError: true,
+			},
 			mock: mock{
 				status: 0,
 				body:   "",
 			},
-			want:    nil,
-			wantErr: true,
 		},
 		{
 			name: "api error",
 			fields: fields{
-				Backlog: &backlog.Backlog{
-					Writer:  io.Discard,
-					BaseURL: "https://example.com",
-					APIKey:  "dummy",
+				Backlog: &backlog.Client{
+					Writer:     io.Discard,
+					BaseURL:    "https://example.com",
+					APIKey:     "dummy",
+					HTTPClient: &http.Client{},
 				},
 			},
 			args: args{
 				id: 1,
+			},
+			expected: expected{
+				value:   nil,
+				isError: true,
 			},
 			mock: mock{
 				status: 404,
 				body:   `{"errors":[{"message":"Not Found"}]}`,
 			},
-			want:    nil,
-			wantErr: true,
 		},
 		{
 			name: "invalid response",
 			fields: fields{
-				Backlog: &backlog.Backlog{
-					Writer:  io.Discard,
-					BaseURL: "https://example.com",
-					APIKey:  "dummy",
+				Backlog: &backlog.Client{
+					Writer:     io.Discard,
+					BaseURL:    "https://example.com",
+					APIKey:     "dummy",
+					HTTPClient: &http.Client{},
 				},
 			},
 			args: args{
 				id: 1,
 			},
+			expected: expected{
+				value:   nil,
+				isError: true,
+			},
 			mock: mock{
 				status: 200,
 				body:   `{"id":1,"projectId":123,"name":}`,
 			},
-			want:    nil,
-			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			o := &Client{
-				Backlog: tt.fields.Backlog,
+				Client: tt.fields.Backlog,
 			}
 			httpmock.Activate()
 			defer httpmock.DeactivateAndReset()
@@ -463,45 +508,48 @@ func TestWiki_Get(t *testing.T) {
 					httpmock.NewStringResponder(tt.mock.status, tt.mock.body),
 				)
 			}
-			got, err := o.Get(tt.args.id)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Wiki.Get() error = %v, wantErr %v", err, tt.wantErr)
+			actual, err := o.Get(tt.args.id)
+			if tt.expected.isError {
+				assert.Error(t, err)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Wiki.Get() = %v, want %v", got, tt.want)
-			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected.value, actual)
 		})
 	}
 }
 
 func TestWiki_Rename(t *testing.T) {
 	type fields struct {
-		Backlog *backlog.Backlog
+		Backlog *backlog.Client
 	}
 	type args struct {
 		page *Page
 		old  string
 		new  string
 	}
+	type expected struct {
+		isError bool
+	}
 	type mock struct {
 		status int
 		body   string
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		mock    mock
-		wantErr bool
+		name     string
+		fields   fields
+		args     args
+		expected expected
+		mock     mock
 	}{
 		{
 			name: "basic",
 			fields: fields{
-				Backlog: &backlog.Backlog{
-					Writer:  io.Discard,
-					BaseURL: "https://example.com",
-					APIKey:  "dummy",
+				Backlog: &backlog.Client{
+					Writer:     io.Discard,
+					BaseURL:    "https://example.com",
+					APIKey:     "dummy",
+					HTTPClient: &http.Client{},
 				},
 			},
 			args: args{
@@ -512,19 +560,22 @@ func TestWiki_Rename(t *testing.T) {
 				old: "Old",
 				new: "New",
 			},
+			expected: expected{
+				isError: false,
+			},
 			mock: mock{
 				status: 200,
 				body:   "",
 			},
-			wantErr: false,
 		},
 		{
 			name: "empty page",
 			fields: fields{
-				Backlog: &backlog.Backlog{
-					Writer:  io.Discard,
-					BaseURL: "https://example.com",
-					APIKey:  "dummy",
+				Backlog: &backlog.Client{
+					Writer:     io.Discard,
+					BaseURL:    "https://example.com",
+					APIKey:     "dummy",
+					HTTPClient: &http.Client{},
 				},
 			},
 			args: args{
@@ -532,19 +583,22 @@ func TestWiki_Rename(t *testing.T) {
 				old:  "Old",
 				new:  "New",
 			},
+			expected: expected{
+				isError: true,
+			},
 			mock: mock{
 				status: 0,
 				body:   "",
 			},
-			wantErr: true,
 		},
 		{
 			name: "empty old string",
 			fields: fields{
-				Backlog: &backlog.Backlog{
-					Writer:  io.Discard,
-					BaseURL: "https://example.com",
-					APIKey:  "dummy",
+				Backlog: &backlog.Client{
+					Writer:     io.Discard,
+					BaseURL:    "https://example.com",
+					APIKey:     "dummy",
+					HTTPClient: &http.Client{},
 				},
 			},
 			args: args{
@@ -555,19 +609,22 @@ func TestWiki_Rename(t *testing.T) {
 				old: "",
 				new: "new",
 			},
+			expected: expected{
+				isError: true,
+			},
 			mock: mock{
 				status: 0,
 				body:   "",
 			},
-			wantErr: true,
 		},
 		{
 			name: "empty new string",
 			fields: fields{
-				Backlog: &backlog.Backlog{
-					Writer:  io.Discard,
-					BaseURL: "https://example.com",
-					APIKey:  "dummy",
+				Backlog: &backlog.Client{
+					Writer:     io.Discard,
+					BaseURL:    "https://example.com",
+					APIKey:     "dummy",
+					HTTPClient: &http.Client{},
 				},
 			},
 			args: args{
@@ -578,19 +635,22 @@ func TestWiki_Rename(t *testing.T) {
 				old: "old",
 				new: "",
 			},
+			expected: expected{
+				isError: true,
+			},
 			mock: mock{
 				status: 0,
 				body:   "",
 			},
-			wantErr: true,
 		},
 		{
 			name: "empty old and new strings",
 			fields: fields{
-				Backlog: &backlog.Backlog{
-					Writer:  io.Discard,
-					BaseURL: "https://example.com",
-					APIKey:  "dummy",
+				Backlog: &backlog.Client{
+					Writer:     io.Discard,
+					BaseURL:    "https://example.com",
+					APIKey:     "dummy",
+					HTTPClient: &http.Client{},
 				},
 			},
 			args: args{
@@ -601,19 +661,22 @@ func TestWiki_Rename(t *testing.T) {
 				old: "",
 				new: "",
 			},
+			expected: expected{
+				isError: true,
+			},
 			mock: mock{
 				status: 0,
 				body:   "",
 			},
-			wantErr: true,
 		},
 		{
 			name: "api error",
 			fields: fields{
-				Backlog: &backlog.Backlog{
-					Writer:  io.Discard,
-					BaseURL: "https://example.com",
-					APIKey:  "dummy",
+				Backlog: &backlog.Client{
+					Writer:     io.Discard,
+					BaseURL:    "https://example.com",
+					APIKey:     "dummy",
+					HTTPClient: &http.Client{},
 				},
 			},
 			args: args{
@@ -624,17 +687,19 @@ func TestWiki_Rename(t *testing.T) {
 				old: "Old",
 				new: "New",
 			},
+			expected: expected{
+				isError: true,
+			},
 			mock: mock{
 				status: 500,
 				body:   `{"errors":[{"message":"Internal Server Error"}]}`,
 			},
-			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			o := &Client{
-				Backlog: tt.fields.Backlog,
+				Client: tt.fields.Backlog,
 			}
 			httpmock.Activate()
 			defer httpmock.DeactivateAndReset()
@@ -646,38 +711,44 @@ func TestWiki_Rename(t *testing.T) {
 				)
 			}
 			err := o.Rename(tt.args.page, tt.args.old, tt.args.new)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Wiki.Rename() error = %v, wantErr %v", err, tt.wantErr)
+			if tt.expected.isError {
+				assert.Error(t, err)
+				return
 			}
+			assert.NoError(t, err)
 		})
 	}
 }
 
 func TestWiki_Replace(t *testing.T) {
 	type fields struct {
-		Backlog *backlog.Backlog
+		Backlog *backlog.Client
 	}
 	type args struct {
 		page  *Page
 		pairs []string
+	}
+	type expected struct {
+		isError bool
 	}
 	type mock struct {
 		status int
 		body   string
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		mock    mock
-		wantErr bool
+		name     string
+		fields   fields
+		args     args
+		expected expected
+		mock     mock
 	}{
 		{
 			name: "basic",
 			fields: fields{
-				Backlog: &backlog.Backlog{
-					Writer: io.Discard,
-					APIKey: "dummy",
+				Backlog: &backlog.Client{
+					Writer:     io.Discard,
+					APIKey:     "dummy",
+					HTTPClient: &http.Client{},
 				},
 			},
 			args: args{
@@ -687,36 +758,42 @@ func TestWiki_Replace(t *testing.T) {
 				},
 				pairs: []string{"Old", "New"},
 			},
+			expected: expected{
+				isError: false,
+			},
 			mock: mock{
 				status: 200,
 				body:   "",
 			},
-			wantErr: false,
 		},
 		{
 			name: "empty page",
 			fields: fields{
-				Backlog: &backlog.Backlog{
-					Writer: io.Discard,
-					APIKey: "dummy",
+				Backlog: &backlog.Client{
+					Writer:     io.Discard,
+					APIKey:     "dummy",
+					HTTPClient: &http.Client{},
 				},
 			},
 			args: args{
 				page:  nil,
 				pairs: []string{"Old", "New"},
 			},
+			expected: expected{
+				isError: true,
+			},
 			mock: mock{
 				status: 0,
 				body:   "",
 			},
-			wantErr: true,
 		},
 		{
 			name: "many pairs",
 			fields: fields{
-				Backlog: &backlog.Backlog{
-					Writer: io.Discard,
-					APIKey: "dummy",
+				Backlog: &backlog.Client{
+					Writer:     io.Discard,
+					APIKey:     "dummy",
+					HTTPClient: &http.Client{},
 				},
 			},
 			args: args{
@@ -726,18 +803,21 @@ func TestWiki_Replace(t *testing.T) {
 				},
 				pairs: []string{"Old", "New", "World", "Earth"},
 			},
+			expected: expected{
+				isError: true,
+			},
 			mock: mock{
 				status: 0,
 				body:   "",
 			},
-			wantErr: true,
 		},
 		{
 			name: "empty pairs",
 			fields: fields{
-				Backlog: &backlog.Backlog{
-					Writer: io.Discard,
-					APIKey: "dummy",
+				Backlog: &backlog.Client{
+					Writer:     io.Discard,
+					APIKey:     "dummy",
+					HTTPClient: &http.Client{},
 				},
 			},
 			args: args{
@@ -747,18 +827,21 @@ func TestWiki_Replace(t *testing.T) {
 				},
 				pairs: nil,
 			},
+			expected: expected{
+				isError: true,
+			},
 			mock: mock{
 				status: 0,
 				body:   "",
 			},
-			wantErr: true,
 		},
 		{
 			name: "invalid pairs",
 			fields: fields{
-				Backlog: &backlog.Backlog{
-					Writer: io.Discard,
-					APIKey: "dummy",
+				Backlog: &backlog.Client{
+					Writer:     io.Discard,
+					APIKey:     "dummy",
+					HTTPClient: &http.Client{},
 				},
 			},
 			args: args{
@@ -768,18 +851,21 @@ func TestWiki_Replace(t *testing.T) {
 				},
 				pairs: []string{"Old"},
 			},
+			expected: expected{
+				isError: true,
+			},
 			mock: mock{
 				status: 0,
 				body:   "",
 			},
-			wantErr: true,
 		},
 		{
 			name: "api error",
 			fields: fields{
-				Backlog: &backlog.Backlog{
-					Writer: io.Discard,
-					APIKey: "dummy",
+				Backlog: &backlog.Client{
+					Writer:     io.Discard,
+					APIKey:     "dummy",
+					HTTPClient: &http.Client{},
 				},
 			},
 			args: args{
@@ -789,17 +875,19 @@ func TestWiki_Replace(t *testing.T) {
 				},
 				pairs: []string{"Old", "New"},
 			},
+			expected: expected{
+				isError: true,
+			},
 			mock: mock{
 				status: 500,
 				body:   `{"errors":[{"message":"Internal Server Error"}]}`,
 			},
-			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			o := &Client{
-				Backlog: tt.fields.Backlog,
+				Client: tt.fields.Backlog,
 			}
 			httpmock.Activate()
 			defer httpmock.DeactivateAndReset()
@@ -811,9 +899,11 @@ func TestWiki_Replace(t *testing.T) {
 				)
 			}
 			err := o.Replace(tt.args.page, tt.args.pairs...)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Wiki.Replace() error = %v, wantErr %v", err, tt.wantErr)
+			if tt.expected.isError {
+				assert.Error(t, err)
+				return
 			}
+			assert.NoError(t, err)
 		})
 	}
 }

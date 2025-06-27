@@ -3,33 +3,47 @@ package main
 import (
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_getVersion(t *testing.T) {
-	tests := []struct {
-		name     string
+	type globals struct {
 		version  string
 		revision string
-		want     string
+	}
+	type expected struct {
+		value string
+	}
+	tests := []struct {
+		name     string
+		globals  globals
+		expected expected
 	}{
 		{
-			name:     "basic",
-			revision: "1234567",
-			want:     fmt.Sprintf("%s (revision: 1234567)", version),
+			name: "basic",
+			globals: globals{
+				revision: "1234567",
+			},
+			expected: expected{
+				value: fmt.Sprintf("%s (revision: 1234567)", version),
+			},
 		},
 		{
-			name:     "no revision",
-			version:  version,
-			revision: "",
-			want:     version,
+			name: "no revision",
+			globals: globals{
+				revision: "",
+			},
+			expected: expected{
+				value: version,
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			revision = tt.revision
-			if got := getVersion(); got != tt.want {
-				t.Errorf("version() = %v, want %v", got, tt.want)
-			}
+			revision = tt.globals.revision
+			actual := getVersion()
+			assert.Equal(t, tt.expected.value, actual)
 		})
 	}
 }

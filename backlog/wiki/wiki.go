@@ -13,12 +13,12 @@ import (
 	"github.com/nekrassov01/backlog-utils/backlog"
 )
 
-// Client represents a Backlog wiki client
+// Client represents a Backlog wiki client.
 type Client struct {
-	*backlog.Backlog
+	*backlog.Client
 }
 
-// Page represents a wiki page
+// Page represents a wiki page.
 type Page struct {
 	ID        int64  `json:"id"`
 	ProjectID int64  `json:"projectId"`
@@ -26,27 +26,16 @@ type Page struct {
 	Content   string `json:"content,omitempty"`
 }
 
-// New creates a new Backlog wiki client
-func New(w io.Writer, url, apiKey string) (*Client, error) {
-	if url == "" {
-		return nil, errors.New("empty URL")
+// NewClient creates a new Backlog wiki client.
+func NewClient(url, apiKey string, opts ...backlog.ClientOption) (*Client, error) {
+	o, err := backlog.NewClient(url, apiKey, opts...)
+	if err != nil {
+		return nil, err
 	}
-	if apiKey == "" {
-		return nil, errors.New("empty api key")
-	}
-	c := &Client{
-		Backlog: &backlog.Backlog{
-			Writer:           w,
-			BaseURL:          url,
-			APIKey:           apiKey,
-			MaxRetryAttempts: 5,
-			MaxJitterMilli:   3000,
-		},
-	}
-	return c, nil
+	return &Client{o}, nil
 }
 
-// List returns a list of wiki pages for the specified project key
+// List returns a list of wiki pages for the specified project key.
 func (c *Client) List(projectKey, pattern string) ([]*Page, error) {
 	if projectKey == "" {
 		return nil, errors.New("empty project key")
@@ -58,10 +47,12 @@ func (c *Client) List(projectKey, pattern string) ([]*Page, error) {
 		return nil, err
 	}
 
-	resp, err := c.Do(req)
+	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
+
+	//nolint:errcheck
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
@@ -96,7 +87,7 @@ func (c *Client) List(projectKey, pattern string) ([]*Page, error) {
 	return pages, nil
 }
 
-// Get returns a wiki page
+// Get returns a wiki page.
 func (c *Client) Get(id int64) (*Page, error) {
 	if id <= 0 {
 		return nil, fmt.Errorf("invalid wikiId: %d", id)
@@ -108,10 +99,12 @@ func (c *Client) Get(id int64) (*Page, error) {
 		return nil, err
 	}
 
-	resp, err := c.Do(req)
+	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
+
+	//nolint:errcheck
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
@@ -132,7 +125,7 @@ func (c *Client) Get(id int64) (*Page, error) {
 	return page, nil
 }
 
-// Rename renames a wiki page
+// Rename renames a wiki page.
 func (c *Client) Rename(page *Page, before, after string) error {
 	if page == nil {
 		return errors.New("empty wiki page")
@@ -155,10 +148,12 @@ func (c *Client) Rename(page *Page, before, after string) error {
 	}
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-	resp, err := c.Do(req)
+	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return err
 	}
+
+	//nolint:errcheck
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
@@ -166,11 +161,11 @@ func (c *Client) Rename(page *Page, before, after string) error {
 		return fmt.Errorf("failed to update wiki page: %d: %s", resp.StatusCode, msg)
 	}
 
-	fmt.Fprintf(c.Writer, "updated: %s => %s\n", oldName, newName)
+	_, _ = fmt.Fprintf(c.Writer, "updated: %s => %s\n", oldName, newName)
 	return nil
 }
 
-// Replace replaces strings in the wiki page content
+// Replace replaces strings in the wiki page content.
 func (c *Client) Replace(page *Page, pairs ...string) error {
 	if page == nil {
 		return errors.New("empty wiki page")
@@ -193,10 +188,12 @@ func (c *Client) Replace(page *Page, pairs ...string) error {
 	}
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-	resp, err := c.Do(req)
+	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return err
 	}
+
+	//nolint:errcheck
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
@@ -204,6 +201,6 @@ func (c *Client) Replace(page *Page, pairs ...string) error {
 		return fmt.Errorf("failed to update wiki page content: %d: %s", resp.StatusCode, msg)
 	}
 
-	fmt.Fprintf(c.Writer, "updated: %d: %s\n", page.ID, page.Name)
+	_, _ = fmt.Fprintf(c.Writer, "updated: %d: %s\n", page.ID, page.Name)
 	return nil
 }

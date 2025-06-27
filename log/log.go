@@ -1,4 +1,4 @@
-package backlog
+package log
 
 import (
 	"io"
