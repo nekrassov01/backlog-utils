@@ -1,9 +1,16 @@
-# Backlog Utils
+<p align="center">
+  <h2 align="center">BACKLOG UTILS</h2>
+  <p align="center">Backlog API utilities</p>
+  <p align="center">
+    <a href="https://github.com/nekrassov01/backlog-utils/actions/workflows/ci.yml"><img src="https://github.com/nekrassov01/backlog-utils/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI" /></a>
+    <a href="https://pkg.go.dev/github.com/nekrassov01/backlog-utils"><img src="https://pkg.go.dev/badge/github.com/nekrassov01/backlog-utils.svg" alt="Go Reference" /></a>
+    <a href="https://goreportcard.com/report/github.com/nekrassov01/backlog-utils"><img src="https://goreportcard.com/badge/github.com/nekrassov01/backlog-utils" alt="Go Report Card" /></a>
+    <img src="https://img.shields.io/github/license/nekrassov01/backlog-utils" alt="LICENSE" />
+    <a href="https://deepwiki.com/nekrassov01/backlog-utils"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki" /></a>
+  </p>
+</p>
 
-[![CI](https://github.com/nekrassov01/backlog-utils/actions/workflows/ci.yml/badge.svg)](https://github.com/nekrassov01/backlog-utils/actions/workflows/ci.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/nekrassov01/backlog-utils)](https://goreportcard.com/report/github.com/nekrassov01/backlog-utils)
-![GitHub](https://img.shields.io/github/license/nekrassov01/backlog-utils)
-![GitHub](https://img.shields.io/github/v/release/nekrassov01/backlog-utils)
+## Overview
 
 Backlog Utils is a client tool for the Backlog API.
 
