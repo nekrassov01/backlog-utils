@@ -1,4 +1,4 @@
-package main
+package version
 
 import "fmt"
 
@@ -6,7 +6,8 @@ const version = "0.0.3"
 
 var revision = ""
 
-func getVersion() string {
+// Version returns the version and revision of the application.
+func Version() string {
 	if revision == "" {
 		return version
 	}

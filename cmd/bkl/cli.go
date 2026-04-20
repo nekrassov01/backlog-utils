@@ -10,6 +10,7 @@ import (
 	"github.com/nekrassov01/backlog-utils/backlog"
 	"github.com/nekrassov01/backlog-utils/backlog/wiki"
 	"github.com/nekrassov01/backlog-utils/log"
+	"github.com/nekrassov01/backlog-utils/version"
 	"github.com/urfave/cli/v3"
 )
 
@@ -116,7 +117,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 		logger.Info("started")
 
 		client := cmd.Metadata["client"].(*wiki.Client)
-		page, err := client.Get(cmd.Int(wikiID.Name))
+		page, err := client.Get(cmd.Int64(wikiID.Name))
 		if err != nil {
 			return err
 		}
@@ -192,7 +193,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 
 	return &cli.Command{
 		Name:                  name,
-		Version:               getVersion(),
+		Version:               version.Version(),
 		Usage:                 "Backlog utilities",
 		Description:           "A cli application for Backlog utilities.",
 		HideHelpCommand:       true,

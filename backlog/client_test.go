@@ -1,4 +1,3 @@
-// backlog/backlog_test.go
 package backlog
 
 import (
