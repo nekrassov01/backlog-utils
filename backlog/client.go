@@ -10,7 +10,7 @@ import (
 
 var nowFunc = time.Now
 
-// Backlog represents a Backlog client.
+// Client represents a Backlog client.
 type Client struct {
 	BaseURL    string       `json:"baseUrl"`
 	APIKey     string       `json:"-"`
@@ -18,8 +18,10 @@ type Client struct {
 	HTTPClient *http.Client `json:"-"`
 }
 
+// ClientOption represents an option for configuring the Backlog client.
 type ClientOption func(*Client)
 
+// WithWriter sets the writer for the Backlog client.
 func WithWriter(w io.Writer) ClientOption {
 	if w == nil {
 		w = os.Stdout
@@ -29,6 +31,7 @@ func WithWriter(w io.Writer) ClientOption {
 	}
 }
 
+// WithTransport sets the HTTP transport for the Backlog client.
 func WithTransport(transport http.RoundTripper) ClientOption {
 	if transport == nil {
 		transport = http.DefaultTransport
