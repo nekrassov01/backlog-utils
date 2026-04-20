@@ -117,7 +117,7 @@ func newCmd(w, ew io.Writer) *cli.Command {
 		logger.Info("started")
 
 		client := cmd.Metadata["client"].(*wiki.Client)
-		page, err := client.Get(cmd.Int(wikiID.Name))
+		page, err := client.Get(cmd.Int64(wikiID.Name))
 		if err != nil {
 			return err
 		}
