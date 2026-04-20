@@ -6,13 +6,11 @@ linters:
     - gosec
     - revive
   disable:
-    - copyloopvar
     - cyclop
-    - depguard
     - dupl
+    - depguard
     - funlen
     - gocognit
-    - goconst
     - lll
     - maintidx
     - mnd
@@ -20,8 +18,8 @@ linters:
     - nlreturn
     - testpackage
     - wsl
-  settings:
-    revive:
-      rules:
-        - name: exported
-          disabled: true
+  exclusions:
+    rules:
+      - linters:
+          - revive
+        text: "package-comments"
