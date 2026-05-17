@@ -5,7 +5,7 @@ go 1.26.2
 require (
 	github.com/jarcoal/httpmock v1.4.1
 	github.com/stretchr/testify v1.11.1
-	github.com/urfave/cli/v3 v3.8.0
+	github.com/urfave/cli/v3 v3.9.0
 )
 
 require (
